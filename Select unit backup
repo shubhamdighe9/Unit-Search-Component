@@ -1,0 +1,1115 @@
+<aura:component implements= "force:appHostable,lightning:isUrlAddressable,flexipage:availableForRecordHome" access="global" 
+                controller="MAF_SelectUnitController">
+    
+    <!--	Aura Attributes	-->
+    <aura:attribute name="picklistValues" type="MAF_SelectUnitController.PicklistValues"/>
+    <aura:attribute name="projectList" type="List"/>
+    <aura:attribute name="phaseList" type="List"/>
+    <aura:attribute name="selectedFilters" type="List"/>
+    <aura:attribute name="selectedFiltersJson" type="String"/>
+    
+    
+    <aura:attribute name="searchResults" type="Unit__c[]"/>
+    <aura:attribute name="columns" type="List"/>
+    <aura:attribute name="selectedRowsInTable" type="List"/>
+    <aura:attribute name="selectedRowsOnPage" type="List"/>
+    <aura:attribute name="selectedIds" type="List"/>
+    <aura:attribute name="selectedUnitList" type="List"/>
+    <aura:attribute name="selectedProject" type="String"/>
+    <aura:attribute name="selectedPhase" type="String"/>
+    <aura:attribute name="selectedUnitType" type="String"/>
+    <aura:attribute name="selectedView" type="String"/>
+    <aura:attribute name="selectedPropertyType" type="String"/>
+    <aura:attribute name="selectedUnitNumber" type="String"/>
+    <aura:attribute name="selectedBedrooms" type="String"/>
+    <aura:attribute name="minPriceRange" type="Integer" default="0" />
+    <aura:attribute name="maxPriceRange" type="Integer" default="0"/>
+    <aura:attribute name="locationCode" type="String" />
+    <aura:attribute name="noResults" type="boolean" default="false" />
+    
+    
+    <aura:attribute name="opportunityId" type="String"/>
+    <aura:attribute name="showSpinner" type="boolean" default="false"/>	
+    <aura:attribute name="hasUnit" type="boolean" default="false"/>	
+    <aura:attribute name="hasReceipt" type="boolean" default="false"/>	
+    <aura:attribute name="isBulk" type="boolean" default="false"/>	
+    
+    <aura:attribute name="maxRowSelection" type="Integer" />
+    <aura:attribute name="selectedRowsCount" type="Integer" default="0"/>
+    
+    <aura:attribute name="displaySearchResults" type="boolean" default="false"/>	
+    
+    
+    <aura:attribute name="paginationList" type="Unit__c[]"/>
+    <aura:attribute name="pageSize" type="Integer" default="10"/>	
+    <aura:attribute name="totalSize" type="Integer"/>
+    <aura:attribute name="start" type="Integer" />
+    <aura:attribute name="end" type="Integer" />
+    
+    
+    
+    <aura:attribute name="sortedBy" type="String" default="Name"/>
+    <aura:attribute name="sortedDirection" type="String" default="asc" />
+    <aura:attribute name="currentPageNumber" type="Integer" default="1"/>
+    <aura:attribute name="selectedPageSize" type="String" default="10"/>
+    <aura:attribute name="totalPages" type="String" />
+    <aura:attribute name="pageList" type="List"/>
+    
+    
+    
+    <!--	New Data Table	-->
+    
+    
+    <aura:attribute name="pageNumber" type="Integer" default="1"/>
+    <aura:attribute name="isLastPage" type="Boolean" default="false"/>
+    <aura:attribute name="resultSize" type="Integer" default="0"/> 
+    <aura:attribute name="selection" type="List" />
+    <aura:attribute name="hasPageChanged" type="Boolean" />
+    <aura:attribute name="initialLoad" type="Boolean" default="true"/>
+    <aura:attribute name="updatedRecord" type="Object[]" />
+    
+    
+    <aura:handler event="force:refreshView" action="{!c.doInit}" />
+    
+    
+    <!--	Event Handlers		-->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <article class="slds-card">
+        <aura:if isTrue="{!v.showSpinner}">
+            <div class="exampleHolder">
+                <lightning:spinner alternativeText="Loading" size="large" />
+            </div>
+        </aura:if>
+        <div class="mainDivClass">
+            <div class="slds-box slds-theme_shade slds-theme_alert-texture slds-align_absolute-center slds-text-heading_medium" style="padding: 30px;"><b>Select Unit Page</b></div>
+            <br/>
+            <aura:if isTrue="{!v.hasUnit}">
+                <div class="slds-text-color_destructive slds-text-heading_medium slds-text-align_center "><b>This Opportunity already has associated unit.</b></div>
+            </aura:if>
+            <br/>
+            
+            <div class="slds-section slds-is-open "
+                 aura:id="collapsibleSectionContainer" >
+                <h3 class="slds-section__title  " >
+                    <lightning:buttonStateful aura:id="collapsibleBttn" labelWhenOff="Filters"
+                                              labelWhenOn="Filters"
+                                              iconNameWhenOff="utility:chevrondown"
+                                              iconNameWhenOn="utility:chevronright"
+                                              onclick="{! c.handleSectionHeaderClick }"
+                                              class="slds-section__title-action slds-button__icon_left" />
+                    
+                </h3>
+                <div class="slds-section__content" >
+                    <div id="filters" style="padding: 5px;}">
+                        <div class="slds-grid slds-wrap"> 
+                            <div class="slds-col slds-size_3-of-12">
+                                <!--onchange="{!updatePhaseList}"	-->
+                                <lightning:select name="Project" label="Project" required="true" value="{!v.selectedProject}" onchange="{!c.updatePhaseList}" >
+                                    <option value="">---None---</option>
+                                    <aura:iteration items="{!v.projectList}" var="project" indexVar="key">
+                                        <option value="{!project.key}">{!project.value}</option>	
+                                    </aura:iteration>
+                                </lightning:select>
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:select name="Phase" label="Phase" value="{!v.selectedPhase}" >
+                                    <option value="">---None---</option>
+                                    <aura:iteration items="{!v.phaseList}" var="phase" indexVar="key">
+                                        <option value="{!phase.key}">{!phase.value}</option>	
+                                    </aura:iteration>
+                                </lightning:select>       
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:select name="Unit Type" label="Unit Type" value="{!v.selectedUnitType}">
+                                    <option value="">---None---</option>
+                                    <aura:iteration items="{!v.picklistValues.unitTypes}" var="unitType"  >
+                                        <option value="{!unitType}">{!unitType}</option>
+                                    </aura:iteration>
+                                </lightning:select>       
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:select name="Views" label="Views" value="{!v.selectedView}" >
+                                    <option value="">---None---</option>
+                                    <aura:iteration items="{!v.picklistValues.views}" var="view"  >
+                                        <option value="{!view}">{!view}</option>
+                                    </aura:iteration>
+                                </lightning:select>       
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:select name="Property Type" label="Property Type" value="{!v.selectedPropertyType}">
+                                    <option value="">---None---</option>
+                                    <aura:iteration items="{!v.picklistValues.propertyTypes}" var="propertyType"  >
+                                        <option value="{!propertyType}">{!propertyType}</option>
+                                    </aura:iteration>
+                                </lightning:select>       
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:input name="Location Code" label="Location Code" value="{!v.locationCode}"/>
+                            </div>
+                          <!--  <div class="slds-col slds-size_3-of-12">
+                                <lightning:input name="Unit Number" label="Unit Number" value="{!v.selectedUnitNumber}"/>
+                            </div>
+-->
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:input type="number" name="Min Price Range" label="Min Price Range" value="{!v.minPriceRange}" />
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:input type="number" name="Max Price Range" label="Max Price Range" value="{!v.maxPriceRange}"/>
+                            </div>
+                            <div class="slds-col slds-size_3-of-12">
+                                <lightning:select name="Bedrooms" label="Bedrooms" value="{!v.selectedBedrooms}" >
+                                    <option value="">---None---</option>
+                                    <aura:iteration items="{!v.picklistValues.bedRooms}" var="bedroom"  >
+                                        <option value="{!bedroom}">{!bedroom}</option>
+                                    </aura:iteration>
+                                </lightning:select>       
+                            </div>
+                            
+                        </div>
+                        <br/>
+                        <br/>
+                        <div class="slds-align_absolute-center">
+                            <lightning:buttonGroup>
+                                <lightning:button variant="brand" label="Cancel" title="Cancel" onclick="{! c.handleCancel }"  />&nbsp;
+                                <lightning:button variant="brand" label="Reset Properties" title="Reset Properties" onclick="{! c.handleResetProperties }" />&nbsp;
+                              <!--  <lightning:button variant="success" label="Search Properties" title="Search Properties" onclick="{! c.handleSearchProperties }" disabled="{!v.hasUnit}"/>&nbsp;-->
+                                <lightning:button variant="success" label="Search Properties" title="Search Properties" onclick="{! c.handleSearchProperties }"  disabled = "{!v.hasReceipt}"/>&nbsp;
+                            </lightning:buttonGroup>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <aura:if isTrue="{!v.noResults}">
+                <div class="slds-text-color_default slds-text-heading_small slds-text-align_center "><b>No results found!</b></div>
+            </aura:if>
+            <aura:if isTrue="{!v.displaySearchResults}">
+                
+                
+                
+                <br/>
+                
+                
+                <div class="slds-align_absolute-center">
+                    <lightning:button variant="brand" label="Add Selected Units" title="Add Selected Units" onclick="{! c.addSelectedUnits }" />&nbsp;
+                </div>
+                <br/>
+                <br/>
+                
+                <lightning:datatable
+                                     aura:id="accountDataTable"
+                                     columns="{! v.columns }"
+                                     data="{! v.searchResults }"
+                                     keyField="Id"
+                                     maxRowSelection="{! v.maxRowSelection }"
+                                     hideCheckboxColumn="false"
+                                     selectedRows = "{!v.selection}"
+                                     onrowaction="{! c.handleRowAction }"
+                                     sortedBy="{!v.sortedBy}"
+                                     sortedDirection="{!v.sortedDirection}"
+                                     onsort="{!c.updateColumnSorting}"
+                                     onrowselection ="{!c.onRowSelection}"/>
+                <br/>
+                
+                <lightning:button label="Prev" iconName="utility:chevronleft" iconPosition="left"
+                                  onclick="{!c.onPrev}" disabled="{! v.pageNumber == 1}"/>
+                <span class="slds-p-horizontal_small">
+                    Page {!v.pageNumber} | Showing records from {! ((v.pageNumber-1)*v.pageSize)+' to '+((v.pageNumber-1)*v.pageSize+v.resultSize)}
+                </span>
+                <lightning:button label="Next" iconName="utility:chevronright" iconPosition="right" 
+                                  disabled="{! v.isLastPage}" onclick="{!c.onNext}"/>
+                <br/><br/>
+            </aura:if>	
+        </div>
+    </article>
+</aura:component>
+
+
+
+======================
+
+({
+    doInit : function(component, event, helper) {
+        console.log('INIT ');
+        component.set('v.columns', [
+            {label: 'Location Code', fieldName: 'linkName',sortable: true, type: 'url', typeAttributes: { label: { fieldName: 'Name' }, target:'_blank'} },
+            {label: 'Phase', fieldName: 'Phase_Name__c', type: 'text',sortable: true},
+            {label: 'Status', fieldName: 'Status__c', type: 'text',sortable: true},
+            {label: 'Unit Price', fieldName: 'Unit_Price__c', type: 'number',sortable: true},
+            {label: 'Bedrooms', fieldName: 'Bedrooms__c', type: 'text',sortable: true},
+            {label: 'Unit Type', fieldName: 'Unit_Type__c', type: 'text',sortable: true},
+            {label: 'Unit Number', fieldName: 'Unit_Number__c', type: 'number',sortable: true},
+            {label: 'Unit View', fieldName: 'Unit_View__c', type: 'text',sortable: true}
+        ]);
+        //            {label: 'Location Code', fieldName: 'Location_Code__c', type: 'text',sortable: true}
+        
+        //            {label: '', fieldName: '', type: 'text'},
+        var selectedIds = [];
+        component.set("v.selectedIds",selectedIds);
+        $A.get("e.force:closeQuickAction").fire() 
+        component.set("v.showSpinner",true); 
+        helper.init(component, event, helper);
+        
+        
+    },
+    
+    handleSearchProperties : function(component, event, helper) {
+        
+        console.log('Searching');
+        var selectedProject = component.get("v.selectedProject");
+        var selectedFilters = [];
+        
+        var selectedFiltersMap = {}
+        if(component.get("v.selectedProject") != ''){
+            var minPriceRange = component.get("v.minPriceRange");
+            if(minPriceRange == null || minPriceRange == ''){
+                minPriceRange = 0;
+            }
+            
+            var maxPriceRange = component.get("v.maxPriceRange");
+            if(maxPriceRange == null || maxPriceRange == ''){
+                maxPriceRange = 0;
+            }
+            
+            
+            if(maxPriceRange != 0 && maxPriceRange <= minPriceRange){
+                alert('Max price should be greater than min price');
+            }else{
+                var selectedProject = component.get("v.selectedProject");
+                if(selectedProject != null && selectedProject != ''){
+                    selectedFiltersMap['Project__c'] = selectedProject;
+                }
+                
+                var selectedPhase = component.get("v.selectedPhase");
+                if(selectedPhase != null && selectedPhase != '' ){
+                    selectedFiltersMap['Phase__c'] = selectedPhase;
+                }
+                
+                var selectedUnitType = component.get("v.selectedUnitType");
+                console.log('selectedUnitType ',selectedUnitType);
+                console.log(selectedUnitType != null);
+                console.log(selectedUnitType != '');
+                
+                if(selectedUnitType != null && selectedUnitType != ''){
+                    selectedFiltersMap['Unit_Type__c'] = selectedUnitType;
+                    //            selectedFilters.push('Unit_Type__c');
+                }
+                
+                var selectedView = component.get("v.selectedView");
+                if(selectedView != null && selectedView != ''){
+                    selectedFiltersMap['Unit_View__c'] = selectedView;
+                }
+                
+                var selectedUnitPropertyType = component.get("v.selectedPropertyType");
+                if(selectedUnitPropertyType != null && selectedUnitPropertyType != ''){
+                    selectedFiltersMap['Property_Type__c'] = selectedUnitPropertyType;
+                }
+                
+                
+                var selectedUnitNumber = component.get("v.selectedUnitNumber");
+                if(selectedUnitNumber != null && selectedUnitNumber != ''){
+                    selectedFiltersMap['Unit_Number__c'] = selectedUnitNumber;
+                }
+                
+                var minPriceRange = component.get("v.minPriceRange");
+                if(minPriceRange != 0){
+                    selectedFiltersMap['minPrice'] = minPriceRange;
+                }
+                
+                var maxPriceRange = component.get("v.maxPriceRange");
+                if( maxPriceRange != 0 ){
+                    selectedFiltersMap['maxPrice'] = maxPriceRange;
+                }
+                
+                var selectedBedrooms = component.get("v.selectedBedrooms");
+                if(selectedBedrooms != null && selectedBedrooms != ''){
+                    selectedFiltersMap['Bedrooms__c'] = selectedBedrooms;
+                }
+                
+                var selectedlocationCode = component.get("v.locationCode");
+                if(selectedlocationCode != null && selectedlocationCode != ''){
+                    selectedFiltersMap['Name'] = selectedlocationCode;
+                }
+                
+                var myJSON = JSON.stringify(selectedFiltersMap);
+                component.set("v.selectedFiltersJson",myJSON);
+                console.log('selectedFiltersJson--> ',myJSON);
+                component.set("v.selectedFilters",selectedFilters);
+                component.set("v.pageNumber",1);
+                helper.searchProperties(component, event, helper);
+                var button = component.find("collapsibleBttn");
+                console.log(button.get('v.state'));
+                var sectionContainer = component.find('collapsibleSectionContainer');
+                $A.util.removeClass(sectionContainer, "slds-is-open");
+            }
+        }else{
+            alert('Please select project.');
+            component.set("v.showSpinner",false);
+        }
+    },
+    
+    updatePhaseList : function(component, event, helper) {
+        component.set("v.showSpinner",true);
+        helper.updatePhaseListHelper(component, event, helper);
+    },
+    
+    handleResetProperties : function(component, event, helper){
+        helper.reset(component,event,helper);
+    },
+    
+    
+    addSelectedUnits : function(component, event, helper){
+        helper.updateUnits(component, event, helper);
+    },
+    
+    handleCancel : function(component, event, helper){
+        var oppId = component.get("v.opportunityId");
+        
+        window.open("/"+oppId,"_self");
+        
+    },
+    updateSelectedText: function (cmp, event) {
+        var selectedRows = event.getParam('selectedRows');
+        cmp.set("v.selectedRowsOnPage",selectedRows);
+        console.log('selectedRows ',selectedRows );
+        cmp.set('v.selectedRowsCount', selectedRows.length);
+    },
+    
+    updateColumnSorting: function( cmp, event, helper) {
+        console.log('=== SORTING ');
+        cmp.set("v.sortedDirection", event.getParam("sortDirection"));
+        cmp.set("v.sortedBy", event.getParam("fieldName") );
+        helper.searchProperties( cmp, event,helper );
+    },
+    
+    
+    onNext : function(component, event, helper) { 
+        //get current page numbe
+        var pageNumber = component.get("v.pageNumber");
+        //Setting current page number
+        component.set("v.pageNumber", pageNumber+1);
+        //Setting pageChange variable to true
+        component.set("v.hasPageChanged", true);
+        
+        helper.searchProperties(component,event, helper);
+    },
+    
+    onPrev : function(component, event, helper) {        
+        //get current page number
+        var pageNumber = component.get("v.pageNumber");
+        //Setting current page number
+        component.set("v.pageNumber", pageNumber-1);
+        //Setting pageChange variable to true
+        component.set("v.hasPageChanged", true);
+        
+        helper.searchProperties(component,event, helper);
+    },
+    
+    /**
+     * This method will keep record of all selected rows
+     * */
+    onRowSelection : function(component, event, helper) {
+        // Avoid any operation if page has changed
+        // as this event will be fired when new data will be loaded in page 
+        // after clicking on next or prev page
+        
+        if((!component.get("v.hasPageChanged") || !component.get("v.isBulk")) || component.get("v.initialLoad")){
+            //set initial load to false
+            component.set("v.initialLoad", false);
+            //Get currently select rows, This will only give the rows available on current page
+            var selectedRows = event.getParam('selectedRows');
+            
+            //Get all selected rows from datatable, this will give all the selected data from all the pages
+            var allSelectedRows = component.get("v.selection");
+            
+            //Get current page number
+            var currentPageNumber = component.get("v.pageNumber");
+            
+            //Process the rows now
+            //Condition 1 -> If any new row selected, add to our allSelectedRows attribute
+            //Condition 2 -> If any row is deselected, remove from allSelectedRows attribute
+            //Solution - Remove all rows from current page from allSelectedRows attribute and then add again
+            
+            //Removing all rows coming from curent page from allSelectedRows
+            var i = allSelectedRows.length;
+            while (i--) {
+                var pageNumber = allSelectedRows[i].split("-")[1];
+                if (pageNumber && pageNumber == currentPageNumber) { 
+                    allSelectedRows.splice(i, 1);
+                } 
+            }
+            
+            //Adding all the new selected rows in allSelectedRows
+            selectedRows.forEach(function(row) {
+                allSelectedRows.push(row.Id);
+            });
+            
+            //Setting new value in selection attribute
+            component.set("v.selection", allSelectedRows);
+        } else{
+            component.set("v.hasPageChanged", false);
+        }
+    },
+    
+    handleSectionHeaderClick : function(component, event, helper) {
+        var button = event.getSource();
+        //        button.set('v.state', !button.get('v.state'));
+        
+        var sectionContainer = component.find('collapsibleSectionContainer');
+        $A.util.toggleClass(sectionContainer, "slds-is-open");
+    },
+    
+    updateSelectedUnits : function(component,event,helper){
+        
+    }
+    
+})
+
+=====================================
+
+({
+    init : function(component, event, helper) {
+        var pageReference = component.get("v.pageReference");
+        component.set("v.opportunityId", pageReference.state.c__opportunityId);
+        
+        var action = component.get("c.getIntitialPicklistValues");
+        action.setParams({ oppId : component.get("v.opportunityId") });
+        action.setCallback(this, function(response) {
+            component.set("v.showSpinner",false);
+            console.log('Response returned');
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                console.log(response.getReturnValue());
+                var retrurnValue = response.getReturnValue();
+                console.log(retrurnValue.projects);
+                console.log('retrurnValue.hasUnit ',retrurnValue.hasUnit);                
+                console.log('retrurnValue.hasReceipt ',retrurnValue.hasReceipt);                
+                component.set("v.hasReceipt",retrurnValue.hasReceipt);  
+                console.log('retrurnValue.recordType ',retrurnValue.recordType);
+                if(retrurnValue.recordType == 'Bulk'){
+                    component.set("v.isBulk",true);
+                    var addBulkButton = component.find("addBulkUnitButton");
+                    console.log(addBulkButton);
+                    // by using $A.util.toggleClass add-remove slds-hide class
+                    $A.util.toggleClass(addBulkButton, "slds-hide");
+                    console.log('Setting true');
+                }else{
+                    component.set("v.maxRowSelection",1);
+                    
+                }
+                if(retrurnValue.hasUnit){
+                    component.set("v.hasUnit",true);    
+                }
+                
+                if(retrurnValue.projects != null){
+                    var pro = [];
+                    for ( var key in retrurnValue.projects ) {
+                        pro.push({value:retrurnValue.projects[key], key:key});
+                    }
+                    console.log('New Map - ',pro);
+                    component.set("v.projectList", pro);
+                }
+                
+                if(retrurnValue.phases != null){
+                    var pha = [];
+                    for ( var key in retrurnValue.phases ) {
+                        pha.push({value:retrurnValue.projects[key], key:key});
+                    }
+                    console.log('New Map - ',pha);
+                    component.set("v.phaseList", pha);
+                }
+                
+                console.log('Bulk ',component.get("v.isBulk"));
+                component.set("v.picklistValues",retrurnValue);
+                console.log(component.get("v.picklistValues"));
+            }
+            else if (state === "ERROR") {
+                console.log('Error');
+                var errors = response.getError();
+                if (errors) {
+                    if (errors[0] && errors[0].message) {
+                        console.log("Error message: " + 
+                                    errors[0].message);
+                        alert('Something went wrong. Please contact your system admin with error message :  '+errors[0].message);
+                    }
+                } else {
+                    console.log("Unknown error");
+                }
+                
+            }
+            
+        });
+        
+        $A.enqueueAction(action);
+    },
+    
+    searchProperties : function(component, event, helper) {
+        component.set("v.showSpinner",true);
+        
+        var selectedFiltersJson = component.get("v.selectedFiltersJson");
+        var sortby = component.get("v.sortedBy"); 
+        var sortOrder = component.get("v.sortedDirection");
+        var pageSize = component.get("v.selectedPageSize");
+        var pageNumber = component.get("v.currentPageNumber");
+        
+        var selectedFilters = component.get("v.selectedFilters");
+        
+        var pageSize = component.get("v.pageSize").toString();
+        var pageNumber = component.get("v.pageNumber").toString();
+        console.log('== >pageSize',pageSize);
+        console.log('== >pageNumber',pageNumber);
+        
+        var action = component.get("c.searchPropertiesApex");
+        
+        action.setParams({ 
+            pageSize: pageSize,
+            pageNumber: pageNumber,
+            sortby: sortby,
+            sortOrder: sortOrder,
+            selectedFilters : selectedFilters,
+            selectedFiltersJson : selectedFiltersJson
+        });
+        
+        
+        action.setCallback(this, function(response) {
+            component.set("v.showSpinner",false);
+            
+            console.log('Response returned');
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                console.log(response.getReturnValue());
+                var retrurnValue = response.getReturnValue();
+                console.log(retrurnValue);
+                // component.set("v.searchResults",retrurnValue);
+                if(response.getReturnValue().length < component.get("v.pageSize")){
+                    component.set("v.isLastPage", true);
+                } else{
+                    component.set("v.isLastPage", false);
+                }
+                response.getReturnValue().forEach(function(row) {
+                    row.Id = row.Id+'-'+pageNumber;
+                    var unitId = row.Id;
+                    var recordId = unitId.split("-")[0];
+                    row.linkName = '/'+recordId;
+                });
+                
+                component.set("v.resultSize", response.getReturnValue().length);
+                console.log('Setting results');
+                component.set("v.searchResults", response.getReturnValue());
+                console.log(' --> Selected --> ',component.get("v.selection"));
+                component.set("v.displaySearchResults", true);
+                console.log('DISPLAY ',component.get("v.displaySearchResults"));
+                
+                //Set selected rows with our selection attribute which has id of each attribute -->s
+                component.find("accountDataTable").set("v.selectedRows",component.get("v.selection"));
+                console.log('after table ');
+            }
+            else if (state === "ERROR") {
+                console.log('Error');
+                var errors = response.getError();
+                if (errors) {
+                    if (errors[0] && errors[0].message) {
+                        console.log("Error message: " + 
+                                    errors[0].message);
+                        alert('Something went wrong. Please contact your system admin with error message :  '+errors[0].message);
+                    }
+                } else {
+                    console.log("Unknown error");
+                }
+                
+            }
+            
+        });
+        
+        $A.enqueueAction(action);
+        //     }
+        
+        
+    },
+    
+    updateUnits : function(component, event, helper) {
+        var oppId = component.get("v.opportunityId");
+        var hasUnit = component.get("v.hasUnit");
+        var action = component.get("c.addUnitsNew");
+        var selectedUnitList = [];
+        var isBulk = component.get("v.isBulk");
+        selectedUnitList = component.get("v.selection");
+        console.log(selectedUnitList);
+        
+        if(selectedUnitList.length == 0){
+            alert('Please select units');
+        }else{ 
+            component.set("v.showSpinner",true);
+            console.log('selectedUnitList ',selectedUnitList);
+            component.set("v.showSpinner",false);
+            console.log('Adding');
+            action.setParams({ oppId1 : oppId,
+                              unitId : selectedUnitList,
+                              isBulk : isBulk,
+                              hasUnit : hasUnit});
+            action.setCallback(this, function(response) {
+                component.set("v.showSpinner",false);
+                console.log('Response returned');
+                component.set("v.showSpinner",false);
+                var state = response.getState();
+                if (state === "SUCCESS") {
+                    window.open("/"+oppId,"_self");
+                    //                $A.get('e.force:refreshView').fire();
+                    //window.location.reload();
+                }
+                else if (state === "ERROR") {
+                    console.log('Error');
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            console.log("Error message: " + 
+                                        errors[0].message);
+                            alert('Something went wrong. Please contact your system admin with error message :  '+errors[0].message);
+                        }
+                    } else {
+                        console.log("Unknown error");
+                    }
+                }
+            });
+            $A.enqueueAction(action);
+        }
+    },
+    
+    updatePhaseListHelper : function(component, event, helper) {
+        component.set("v.showSpinner",true);
+        var selectedProject = component.get("v.selectedProject");
+        
+        if(selectedProject != null ){
+        }  else{
+            selectedProject = ''
+        }
+        console.log(selectedProject);
+        
+        console.log(selectedProject);
+        var action = component.get("c.updateProjectAndPhasePicklist");
+        action.setParams({ selectedProject1 : selectedProject });
+        action.setCallback(this, function(response) {
+            console.log('Response returned');
+            component.set("v.showSpinner",false);
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                console.log(response.getReturnValue());
+                var retrurnValue = response.getReturnValue();
+                console.log(retrurnValue.phases);
+                
+                if(retrurnValue.phases != null){
+                    var pha = [];
+                    for ( var key in retrurnValue.phases ) {
+                        pha.push({value:retrurnValue.phases[key], key:key});
+                    }
+                    console.log('New Map - ',pha);
+                    component.set("v.phaseList", pha);
+                }
+                
+                
+            }
+            else if (state === "ERROR") {
+                console.log('Error');
+                var errors = response.getError();
+                if (errors) {
+                    if (errors[0] && errors[0].message) {
+                        console.log("Error message: " + 
+                                    errors[0].message);
+                        alert('Something went wrong. Please contact your system admin with error message :  '+errors[0].message);
+                    }
+                } else {
+                    console.log("Unknown error");
+                }
+                
+            }
+            
+        });
+        
+        $A.enqueueAction(action);
+        
+    },
+    
+    reset : function(component,event, helper){
+        component.set("v.selectedProject","");
+        component.set("v.selectedPhase","");
+        component.set("v.selectedUnitType","");
+        component.set("v.selectedView","");
+        component.set("v.selectedUnitPropertyType","");
+        component.set("v.selectedUnitNumber","");
+        component.set("v.minPriceRange","0");
+        component.set("v.maxPriceRange","0");
+        component.set("v.selectedBedrooms","");
+        component.set("v.locationCode","");
+        
+        component.set("v.displaySearchResults",false);
+        
+        var blankList = [];
+        component.set("v.searchResults",blankList);
+        component.set("v.paginationList",blankList);
+    },
+})
+===============================================================
+.THIS .slds-col {
+    padding: 5px;
+}
+
+.THIS.exampleHolder{
+    position: relative;
+    display: inline-block;
+    width: 80px;
+    height: 80px;
+}
+.THIS .slds-button_neutral {
+    justify-content : left !important;
+}
+=====================documentaion-===========
+
+<aura:documentation>
+	<aura:description>Documentation</aura:description>
+	<aura:example name="ExampleName" ref="exampleComponentName" label="Label">
+		Example Description
+	</aura:example>
+</aura:documentation>
+=================================MAF_SelectUnitController.apex================
+
+public class MAF_SelectUnitController {
+    
+    public static final String  FIRST_VALUE = '-- None --';
+    public static ApexPages.StandardSetController ssc;
+    
+    @auraEnabled
+    public static PicklistValues getIntitialPicklistValues(String oppId){
+        
+        PicklistValues toReturn = new PicklistValues();
+        List<Project__c> projectList = new List<Project__c>();
+        projectList = [SELECT Id,Name FROM Project__c ORDER BY Name LIMIT 50000];
+        Map<String,String> ProjectMap = new Map<String,String>();
+        Opportunity opp = [SELECT Id,Name,Unit__c,recordtype.Name,Total_Receipt_Amount__c,substage__c FROM Opportunity WHERE ID =: oppId];
+        
+        
+        if((opp.substage__c=='Booking Pending' || opp.substage__c=='Booking Approved' || opp.substage__c=='Reservation Pending' || opp.substage__c=='Reservation Approved' || opp.substage__c=='Purchase Pending' || opp.substage__c=='Purchase Approved')||(opp.Total_Receipt_Amount__c > 0 && opp.Total_Receipt_Amount__c!=null)){
+            toReturn.hasReceipt = true;
+            
+        }else{
+            toReturn.hasReceipt = false;
+        }
+        if(opp.Unit__c != null){
+            toReturn.hasUnit = true;
+        }
+        else{
+            toReturn.hasUnit = false;
+        }
+        system.debug('toReturn.hasUnit '+toReturn.hasUnit);
+        toReturn.recordType = opp.RecordType.Name;
+        toReturn.projects = createMap('Name',projectList);
+        toReturn.phases =   createMap('',new List<sObject>());
+        toReturn.bedRooms  = getPickValues(new Unit__c(), 'Bedrooms__c', ''); 
+        toReturn.unitTypes = getPickValues(new Unit__c(), 'Unit_Type__c', ''); 
+        toReturn.views = getPickValues(new Unit__c(), 'Unit_View__c', ''); 
+        toReturn.propertyTypes = getPickValues(new Unit__c(), 'Property_Type__c', ''); 
+        toReturn.bedRooms.sort();
+        toReturn.unitTypes.sort();
+        toReturn.views.sort();
+        toReturn.propertyTypes.sort();
+        
+        system.debug('toReturn '+toReturn);
+        return toReturn;
+    }
+    
+    public static Map<String,String> createMap(String fieldName,List<sObject> objectList){
+        Map<String,String> mapToReturn = new Map<String,String>();
+        for(sObject obj : objectList){
+            mapToReturn.put(String.valueOf(obj.get('Id')), String.valueOf(obj.get(fieldName)));
+            system.debug('obj '+obj.get(fieldName));
+            //   listToReturn.add(String.valueOf(obj.get(fieldName)));
+        }   
+        system.debug('mapToReturn '+mapToReturn);
+        return mapToReturn;
+    }
+    
+    @AuraEnabled
+    public static void addUnitsNew(String oppId1,List<String> unitId, boolean isBulk,boolean hasUnit){
+        system.debug('oppId1 '+oppId1);
+        system.debug('unitId '+unitId);
+        system.debug('hasUnit '+hasUnit);
+        if(isBulk){
+            List<Unit__c> unitsToUpdate = new List<Unit__c>();
+            for(String uId : unitId){
+                if(uId != null){
+                    String finalString = uId.split('-')[0];
+                    Unit__c u = new Unit__c();
+                    u.Bulk_Opportunity__c = oppId1;
+                    u.Id = finalString;
+                    unitsToUpdate.add(u);
+                }
+            }
+            system.debug(unitsToUpdate);
+            if(unitsToUpdate.size() > 0){
+                Update unitsToUpdate;
+            } 
+            Opportunity recOpp = [Select Id,Selling_Amount__c,amount,payment_plan__c,phase__c,Unit__r.Unit_Type__c,Discount_Amount__c from opportunity where Id =:oppId1];
+            List<Discount_offer__c> disOfrlist  = [SELECT Id,Discount_Value__c,Discount_Amount__c FROM Discount_offer__c where Opportunity__c =:oppId1];
+            Decimal totalDiscount = 0;
+            if(disOfrlist.size() > 0){
+            	for(Discount_offer__c dofr : disOfrlist){
+                   dofr.Discount_Amount__c = recOpp.amount * (dofr.Discount_Value__c/100);
+                   totalDiscount +=dofr.Discount_Amount__c;
+            	}
+           
+            recOpp.Discount_Amount__c = totalDiscount > 0 ? totalDiscount:recOpp.Discount_Amount__c;
+            recOpp.Selling_Amount__c = recOpp.Selling_Amount__c -  (totalDiscount > 0 ? totalDiscount:recOpp.Discount_Amount__c);
+			update recOpp;            
+            }            
+            
+        }else{
+            if(unitId.size() > 0){	
+                String finalString = unitId.get(0).split('-')[0];
+                Unit__c u = [SELECT Id,Unit_Type__c,Name,Unit_Number__c,Phase__c,Unit_Price__c,Vat_Rate_Code__c,Vat_Rate_Code__r.Percentage_Rate__c
+                             FROM Unit__c 
+                             WHERE Id=:finalString];
+                
+                Opportunity recOpp = [Select Id,payment_plan__c,phase__c,Unit__r.Unit_Type__c from opportunity where Id =:oppId1];
+                Opportunity opp;
+                opp = new Opportunity(Id=oppId1);
+                opp.amount = u.Unit_Price__c;
+                opp.Unit__c = u.Id;
+                opp.Selling_Amount__c = u.Unit_Price__c; 
+                opp.Discount_Amount__c = 0;
+                if(hasUnit ){
+                    List<Discount_offer__c> disOfrlist  = [SELECT Id,Discount_Value__c,Discount_Amount__c FROM Discount_offer__c where Opportunity__c =:oppId1];
+                    if(u.Phase__c == recOpp.Phase__c){
+                    	Decimal totalDiscount = 0;
+                    	for(Discount_offer__c dofr : disOfrlist){
+                        	dofr.Discount_Amount__c = opp.amount * (dofr.Discount_Value__c/100);
+                        	totalDiscount +=dofr.Discount_Amount__c;
+                    	}
+                    	if(disOfrlist.size()>0){
+                        	opp.Selling_Amount__c = u.Unit_Price__c - totalDiscount;
+                        	opp.Discount_Amount__c = totalDiscount;
+                        	opp.Payment_Plan__c = recOpp.Payment_Plan__c;
+                        	DiscountCalculationHandler.RUNTRIGGER = false;
+                    	    update disOfrlist;
+                    	}
+                        if(recOpp.Unit__r.Unit_Type__c != u.Unit_Type__c){
+                            List<Opportunity_Unit_Option__c> untOpt = [Select Id from Opportunity_Unit_Option__c where Opportunity__c = :oppId1];
+                        	if(untOpt.size() > 0){
+                           		 //OpportunityUnitOptionHandler.RUNUNITUPGRADE = false;
+                           		 delete untOpt;
+                        	}
+                        }
+                    }
+                    else{
+                        opp.Payment_Plan__c = null;
+                        List<Opportunity_Unit_Option__c> untOpt = [Select Id from Opportunity_Unit_Option__c where Opportunity__c = :oppId1];
+                        if(untOpt.size() > 0){
+                           // OpportunityUnitOptionHandler.RUNUNITUPGRADE = false;
+                            delete untOpt;
+                        }
+                        List<Opportunity_Charge__c> opCharge = [Select Id from Opportunity_Charge__c where Opportunity__c =:oppId1];
+                        system.debug('------>'+opCharge);
+                        if(opCharge.size() > 0){
+                            //MAF_OpportunityChargeTriggerHandler.RUNTRIGGER = false;
+                            delete opCharge;
+                        }
+                        if(disOfrlist.size() > 0){
+                          	DiscountCalculationHandler.RUNTRIGGER = false;
+                       	 	delete disOfrlist;
+                        }
+                    }
+                }
+                system.debug('--->'+u.name);
+                if(u.Unit_Number__c != null){
+                    opp.Unit_Number__c = u.Unit_Number__c ;
+                }
+               opp.Phase__c =u.Phase__c;
+                try{
+                    Update opp;
+                }catch(DmlException ex){
+                    throw new AuraHandledException(ex.getDmlMessage(0));
+                }
+            }
+        }
+    }
+    
+    @AuraEnabled
+    public static PicklistValues updateProjectAndPhasePicklist(String selectedProject1){
+        //            toReturn.projects = createMap('Name',projectList);
+        system.debug('selectedProject '+selectedProject1);
+        PicklistValues toReturn = new PicklistValues();
+        
+        if(selectedProject1 != ''){
+            List<Phase__c> phaseList = new List<Phase__c>();
+            phaseList = [SELECT Id,Name FROM Phase__c  WHERE Project__c =:selectedProject1 ORDER BY Name];
+            toReturn.phases =   createMap('Name',phaseList);
+        }else{
+            toReturn.phases =   createMap('',new List<sObject>());
+        }
+        system.debug('toReturn '+toReturn);
+        return toReturn;
+    }
+    
+    //String project,String phase,String unitType,String view,String propertyType,String unitNumber,Integer minPriceRange1,Integer maxPriceRange1,String bedrooms,String locationCode, 
+    @AuraEnabled
+    public static List<Unit__c> searchPropertiesApex(Integer pageSize, Integer pageNumber,String sortby, String sortOrder,List<String> selectedFilters,String selectedFiltersJson  ){
+        //, String sortBy, String sortOrder
+        system.debug('Searching '+selectedFilters);
+        system.debug('selectedFiltersJson '+selectedFiltersJson);
+        Map<String,Object> jsonObject = (Map<String,Object>) System.JSON.deserializeUntyped(selectedFiltersJson);
+        system.debug('jsonObject '+jsonObject);
+        List<Unit__c> listToDisplay = new List<Unit__c>();
+        String soql = 'SELECT Id,Name,Unit_Price__c,Bedrooms__c,Phase__c,Phase__r.Name,Phase_Name__c,Unit_Type__c,Unit_Number__c,Unit_View__c,Property_Type__c,Status__c,Location_Code__c FROM Unit__c WHERE  Status__c = \'Available\' AND IsActive__c=TRUE ';
+        //      units = [SELECT Id,Name,Unit_Price__c,Bedrooms__c,Unit_Type__c,Unit_Number__c,Unit_View__c,Property_Type__c,Status__c FROM Unit__c WHERE Phase__c =:selectedPhase ORDER BY Unit_Price__c DESC ];
+        
+        Set<String> filterSet = new Set<String>();
+        filterSet.addAll(selectedFilters);
+        Set<Id> phaseSet = new Set<Id>();
+        String project = '';
+        if(jsonObject.containsKey('Project__c')){
+            project = (String)jsonObject.get('Project__c');
+        }
+        
+        if(jsonObject.containsKey('Phase__c')){
+            String phase = (String)jsonObject.get('Phase__c');
+            if(phase != '' ){
+                phaseSet.add(phase);
+            }else{
+                Map<Id,Phase__c> phaseMap = new Map<Id,Phase__c>([SELECT Id,Name FROM Phase__c WHERE Project__c =:project]);
+                phaseSet = phaseMap.keyset();
+            }
+        }else{
+            Map<Id,Phase__c> phaseMap = new Map<Id,Phase__c>([SELECT Id,Name FROM Phase__c WHERE Project__c =:project]);
+            phaseSet = phaseMap.keyset();
+        }
+        soql += ' AND Phase__c IN :phaseSet ';
+        
+        if(jsonObject.containsKey('minPrice')){
+            Integer minPriceRange1 = Integer.valueOf(jsonObject.get('minPrice')) ;
+            system.debug('minPriceRange1 '+minPriceRange1);
+            
+            soql += ' AND Unit_Price__c >= : minPriceRange1 ';
+            
+        }
+        
+        if(jsonObject.containsKey('maxPrice')){
+            Integer maxPriceRange1 = Integer.valueOf(jsonObject.get('maxPrice')) ;
+            system.debug('maxPriceRange1 '+maxPriceRange1);
+            soql += ' AND Unit_Price__c <= : maxPriceRange1 ';
+        }
+        
+        if(jsonObject.containsKey('Bedrooms__c')){
+            String bedrooms = (String) jsonObject.get('Bedrooms__c');
+            soql += ' AND Bedrooms__c = : bedrooms ';
+        }
+        
+        if(jsonObject.containsKey('Unit_Type__c')){
+            String unitType = (String) jsonObject.get('Unit_Type__c');
+            if(unitType != ''){
+                soql += ' AND Unit_Type__c = : unitType ';
+            }
+        }
+        
+        if(jsonObject.containsKey('Unit_Number__c')){
+            String unitNumber = (String) jsonObject.get('Unit_Number__c');
+            if(unitNumber != ''){
+                soql += ' AND Unit_Number__c = : unitNumber ';
+            }
+        }
+        
+        if(jsonObject.containsKey('Unit_View__c')){
+            String view = (String) jsonObject.get('Unit_View__c');
+            if(view != ''){
+                soql += ' AND Unit_View__c = : view ';
+            }
+        }
+        
+        if(jsonObject.containsKey('Property_Type__c')){
+            String propertyType = (String) jsonObject.get('Property_Type__c');
+            if(propertyType != ''){
+                soql += ' AND Property_Type__c = : propertyType ';
+            }
+        }
+        
+        if(jsonObject.containsKey('Name')){
+            String locationCode = (String) jsonObject.get('Name');
+            if(locationCode != ''){
+                soql += ' AND Name = : locationCode ';
+            }
+        }
+        
+        Integer ps = Integer.valueOf(pageSize);
+        Integer pn = Integer.valueOf(pageNumber)-1;
+        system.debug('sortby '+sortby);
+        system.debug('sortOrder '+sortOrder);
+        
+        //  LIMIT :Integer.valueOf(ps) OFFSET :(ps*pn)
+        if( sortby != NULL && sortOrder != NULL  ){
+            soql += ' ORDER BY '+ sortby+' '+ sortOrder+' NULLS LAST';
+        }
+        
+        //   soql += ' ORDER BY Unit_Price__c DESC' ;
+        system.debug('--> SOQL '+soql);
+        
+        
+        ssc = new ApexPages.StandardSetController( Database.getQueryLocator( soql ) );
+        //set page size
+        ssc.setpagesize(pageSize);
+        //set page number 
+        ssc.setPageNumber( pageNumber );
+        //        listToDisplay = database.query(soql);
+        listToDisplay =  (List<Unit__c>)ssc.getRecords();
+        system.debug('listToDisplay '+listToDisplay);
+        
+        return listToDisplay;
+    }
+    
+    public static List<String> getValues(String fieldName, List<sObject> objectList ){
+        List<String> listToReturn = new List<String>();
+        listToReturn.add(FIRST_VALUE);
+        for(sObject obj : objectList){
+            system.debug('obj '+obj.get(fieldName));
+            listToReturn.add(String.valueOf(obj.get(fieldName)));
+        }
+        return listToReturn;
+    }   
+    
+    public static List<String> getPickValues(Sobject object_name, String field_name, String first_val) {
+        List<String> options = new List<String>(); //new list for holding all of the picklist options
+        /*        if (first_val != null) { //if there is a first value being provided
+options.add(FIRST_VALUE); //add the first option
+}
+*/
+        Schema.sObjectType sobject_type = object_name.getSObjectType(); //grab the sobject that was passed
+        Schema.DescribeSObjectResult sobject_describe = sobject_type.getDescribe(); //describe the sobject
+        Map<String, Schema.SObjectField> field_map = sobject_describe.fields.getMap(); //get a map of fields for the passed sobject
+        List<Schema.PicklistEntry> pick_list_values = field_map.get(field_name).getDescribe().getPickListValues(); //grab the list of picklist values for the passed field on the sobject
+        for (Schema.PicklistEntry a : pick_list_values) { //for all values in the picklist list
+            options.add(a.getLabel()); //add the value and label to our final list
+        }
+        system.debug('options '+options);
+        return options; //return the List
+    }
+    
+    public class PicklistValues{
+        
+        @AuraEnabled public Map<String,String> projects;
+        @AuraEnabled public Map<String,String> phases;
+        @AuraEnabled public List<String> unitTypes;
+        @AuraEnabled public List<String> views;
+        @AuraEnabled public List<String> propertyTypes;
+        @AuraEnabled public List<String> bedRooms;
+        @AuraEnabled public boolean hasUnit;
+        @AuraEnabled public boolean hasReceipt;
+        @AuraEnabled public String recordType;
+        public PicklistValues(){
+            projects = new Map<String,String>();
+            phases = new Map<String,String>();
+            unitTypes = new List<String>();
+            views = new List<String>();
+            propertyTypes = new List<String>();
+            hasUnit = false;
+            hasReceipt=false;
+        }
+        
+    }
+}
